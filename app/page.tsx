@@ -1,147 +1,137 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Navbar } from '@/components/Navbar';
-import { AdminControl } from '@/components/AdminControl';
-import { WeekHeader } from '@/components/WeekHeader';
-import { TimeColumn } from '@/components/TimeColumn';
-import { DayColumn } from '@/components/DayColumn';
-import { CommentsRow } from '@/components/CommentsRow';
-import { FooterInfo } from '@/components/FooterInfo';
+import { useState } from 'react';
 
-import { TimeSlot, DayPreference, Shift } from '@/types/schedule';
-import { fetchAdminShifts, createShiftByAdmin, saveUserPreferences } from '@/lib/api';
+// Nädalapäevad ja kellaajad
+const DAYS = ['Esmaspäev', 'Teisipäev', 'Kolmapäev', 'Neljapäev', 'Reede'];
+const TIMES = ['09:00 - 12:00', '12:00 - 15:00', '15:00 - 18:00', '18:00 - 21:00'];
 
-const DAY_SLOTS: TimeSlot[] = [
-  { id: '1', startTime: '09:30', endTime: '10:00' },
-  { id: '2', startTime: '10:00', endTime: '11:00' },
-  { id: '3', startTime: '11:00', endTime: '12:00' },
-  { id: '4', startTime: '12:00', endTime: '13:00' },
-  { id: '5', startTime: '13:00', endTime: '14:00' },
-  { id: '6', startTime: '14:00', endTime: '15:00' },
-  { id: '7', startTime: '16:00', endTime: '17:00' },
-  { id: '8', startTime: '17:00', endTime: '18:00' },
-  { id: '9', startTime: '18:00', endTime: '19:00' },
-  { id: '10', startTime: '19:00', endTime: '20:00' },
-  { id: '11', startTime: '20:00', endTime: '21:00' },
-  { id: '12', startTime: '21:00', endTime: '22:00' },
-  { id: '13', startTime: '22:00', endTime: '23:00' },
-  { id: '14', startTime: '23:00', endTime: '23:59' },
-];
+export default function HomePage() {
+  // Salvestame valitud ajad (nt: "Esmaspäev-09:00 - 12:00")
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  const [comment, setComment] = useState('');
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-const OVERNIGHT_SLOTS: TimeSlot[] = [
-  { id: '15', startTime: '00:00', endTime: '01:00', isOvernight: true },
-  { id: '16', startTime: '01:00', endTime: '02:00', isOvernight: true },
-];
-
-export default function SchedulePage() {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const [days, setDays] = useState<DayPreference[]>([
-    { dayName: 'esmaspäev', dateStr: '02.11.2026', availableFrom: '09:30', availableTo: '02:00', isCompleted: true, needsBreak: false, comment: '' },
-    { dayName: 'teisipäev', dateStr: '03.11.2026', availableFrom: '09:30', availableTo: '02:00', isCompleted: true, needsBreak: false, comment: '' },
-    { dayName: 'kolmapäev', dateStr: '04.11.2026', availableFrom: '12:00', availableTo: '02:00', isCompleted: true, needsBreak: false, comment: '' },
-    { dayName: 'neljapäev', dateStr: '05.11.2026', availableFrom: '09:30', availableTo: '21:00', isCompleted: true, needsBreak: false, comment: '' },
-    { dayName: 'reede', dateStr: '06.11.2026', availableFrom: '09:30', availableTo: '21:00', isCompleted: true, needsBreak: false, comment: '' },
-  ]);
-
-  // Lae andmed API-st lehe laadimisel
-  useEffect(() => {
-    fetchAdminShifts().then((data) => setShifts(data));
-  }, []);
-
-  // Lisa vahetus (Admin)
-  const handleAddShift = async (dayDateStr: string, text: string) => {
-    const newShift = await createShiftByAdmin({ dayDateStr, text });
-    setShifts((prev) => [...prev, newShift]);
+  // Aegade valimine ja eemaldamine klõpsates
+  const toggleSlot = (day: string, time: string) => {
+    const slotKey = `${day}-${time}`;
+    if (selectedSlots.includes(slotKey)) {
+      setSelectedSlots(selectedSlots.filter((s) => s !== slotKey));
+    } else {
+      setSelectedSlots([...selectedSlots, slotKey]);
+    }
   };
 
-  // Kustuta vahetus (Admin)
-  const handleDeleteShift = (shiftId: string) => {
-    setShifts((prev) => prev.filter((s) => s.id !== shiftId));
-  };
-
-  // Uuenda päeva andmeid
-  const handleUpdateDay = (updatedDay: DayPreference) => {
-    setDays((prev) =>
-      prev.map((d) => (d.dateStr === updatedDay.dateStr ? updatedDay : d))
-    );
-  };
-
-  // Kommentaari muutmine
-  const handleCommentChange = (dateStr: string, comment: string) => {
-    setDays((prev) =>
-      prev.map((d) => (d.dateStr === dateStr ? { ...d, comment } : d))
-    );
-  };
-
-  // Salvesta valikud backendi
-  const handleSubmitAll = async () => {
-    setIsSaving(true);
-    await saveUserPreferences(days);
-    setIsSaving(false);
-    alert('Valikud on edukalt salvestatud!');
+  // Vormi saatmine
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitted(true);
   };
 
   return (
-    <div className="min-h-screen bg-neutral-100 text-neutral-900 font-sans">
-      <Navbar isAdmin={isAdmin} onToggleAdmin={() => setIsAdmin(!isAdmin)} />
+    <main className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow border border-gray-200 my-8">
+      <h1 className="text-2xl font-bold mb-2 text-gray-800 text-center">
+        Aja Broneerimine
+      </h1>
+      <p className="text-gray-600 mb-6 text-sm text-center">
+        Vali tabelist sobivad kellaajad ja vajuta "Salvesta valikud".
+      </p>
 
-      {isAdmin && <AdminControl days={days} onAddShift={handleAddShift} />}
+      {isSubmitted ? (
+        /* Kinnituse teade pärast salvestamist */
+        <div className="bg-green-50 border border-green-400 text-green-800 p-4 rounded text-center">
+          <h2 className="font-bold text-lg mb-2">Valikud salvestatud!</h2>
+          <p className="text-sm mb-2">Valisid kokku <strong>{selectedSlots.length}</strong> aega.</p>
+          
+          {selectedSlots.length > 0 && (
+            <ul className="text-xs bg-white p-3 rounded border border-green-200 inline-block text-left mb-3">
+              {selectedSlots.map((slot) => (
+                <li key={slot}>• {slot.replace('-', ' kell ')}</li>
+              ))}
+            </ul>
+          )}
 
-      <WeekHeader />
+          {comment && (
+            <p className="text-xs italic mb-4">Märkus: "{comment}"</p>
+          )}
 
-      <main className="max-w-[1400px] mx-auto p-2">
-        {/* Päevade päis */}
-        <div className="grid grid-cols-6 gap-2 mb-2">
-          <div className="col-span-1"></div>
-          {days.map((d) => (
-            <div key={d.dateStr} className="col-span-1 bg-white border border-neutral-400 p-1 text-center font-bold">
-              <div className="text-sm uppercase">{d.dayName}</div>
-              <div className="text-xs text-neutral-600">{d.dateStr}</div>
-            </div>
-          ))}
+          <div>
+            <button
+              onClick={() => setIsSubmitted(false)}
+              className="px-4 py-2 bg-green-700 text-white text-xs font-bold rounded hover:bg-green-800 transition"
+            >
+              Muuda valikuid
+            </button>
+          </div>
         </div>
-
-        {/* Päevane graafik */}
-        <div className="grid grid-cols-6 gap-2">
-          <div className="col-span-1">
-            <TimeColumn slots={DAY_SLOTS} />
+      ) : (
+        /* Aegade valimise vorm */
+        <form onSubmit={handleSubmit}>
+          {/* Lihtne tabel */}
+          <div className="overflow-x-auto mb-6">
+            <table className="w-full border-collapse border border-gray-300 text-sm">
+              <thead>
+                <tr className="bg-gray-100 text-gray-700">
+                  <th className="border border-gray-300 p-2 text-left">Kellaaeg</th>
+                  {DAYS.map((day) => (
+                    <th key={day} className="border border-gray-300 p-2 text-center">
+                      {day}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {TIMES.map((time) => (
+                  <tr key={time}>
+                    <td className="border border-gray-300 p-2 font-semibold bg-gray-50 text-gray-600 text-xs">
+                      {time}
+                    </td>
+                    {DAYS.map((day) => {
+                      const slotKey = `${day}-${time}`;
+                      const isSelected = selectedSlots.includes(slotKey);
+                      return (
+                        <td
+                          key={slotKey}
+                          onClick={() => toggleSlot(day, time)}
+                          className={`border border-gray-300 p-3 text-center cursor-pointer text-xs font-medium select-none transition-colors ${
+                            isSelected
+                              ? 'bg-blue-600 text-white'
+                              : 'hover:bg-blue-50 text-gray-400'
+                          }`}
+                        >
+                          {isSelected ? '✓ Valitud' : 'Vali'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          {days.map((day) => (
-            <DayColumn
-              key={day.dateStr}
-              day={day}
-              shifts={shifts.filter((s) => s.dayDateStr === day.dateStr)}
-              isAdmin={isAdmin}
-              onUpdateDay={handleUpdateDay}
-              onDeleteShift={handleDeleteShift}
+          {/* Lisakommentaar */}
+          <div className="mb-6">
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              Märkus või kommentaar (valikuline):
+            </label>
+            <input
+              type="text"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Nt. Saan tulla alates kella 10:00-st..."
+              className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-          ))}
-        </div>
-
-        {/* Öine osa */}
-        <div className="grid grid-cols-6 gap-2 my-2">
-          <div className="col-span-1">
-            <TimeColumn slots={OVERNIGHT_SLOTS} isOvernight />
           </div>
-          {days.map((d) => (
-            <div key={d.dateStr} className="col-span-1 bg-white border border-neutral-300 min-h-[60px] relative">
-              <svg className="w-full h-full absolute inset-0 opacity-10 pointer-events-none">
-                <line x1="0" y1="0" x2="100%" y2="100%" stroke="black" strokeWidth="1" />
-                <line x1="100%" y1="0" x2="0" y2="100%" stroke="black" strokeWidth="1" />
-              </svg>
-            </div>
-          ))}
-        </div>
 
-        <CommentsRow days={days} onCommentChange={handleCommentChange} />
-
-        <FooterInfo onSubmit={handleSubmitAll} isLoading={isSaving} />
-      </main>
-    </div>
+          {/* Salvestamise nupp */}
+          <button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded text-sm transition"
+          >
+            Salvesta valikud
+          </button>
+        </form>
+      )}
+    </main>
   );
 }

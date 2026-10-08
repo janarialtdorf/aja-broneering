@@ -1,9 +1,7 @@
 import './globals.css';
-import type { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: 'PÖFF Broneerimissüsteem',
-  description: 'Vabatahtlike graafik ja aegade valimine',
+export const metadata = {
+  title: 'Aja broneerimine',
 };
 
 export default function RootLayout({
@@ -13,7 +11,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="et">
-      <body className="antialiased bg-neutral-100 text-neutral-900">
+      <body className="bg-gray-100 text-gray-900 font-sans antialiased">
         {children}
       </body>
     </html>
